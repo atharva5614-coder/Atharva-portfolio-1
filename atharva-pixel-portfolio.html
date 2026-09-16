@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Atharva Dhumal — HR Quest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall:#2B2140;
+    --wall-stripe:#4A3B78;
+    --floor-a:#4A331F;
+    --floor-b:#3C291A;
+    --hud:#14101F;
+    --teal:#6BE8C9;
+    --gold:#FFD54A;
+    --pink:#FF5C7A;
+    --blue:#8CA6FF;
+    --purple:#C78CFF;
+    --orange:#FF9933;
+    --green:#80FF99;
+    --ink:#14101F;
+    --paper:#FFF8EC;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; overflow:hidden;}
+  body{
+    background:var(--wall);
+    font-family:'Silkscreen', monospace;
+    color:var(--paper);
+    -webkit-font-smoothing:none;
+    image-rendering:pixelated;
+  }
+  .pixel{font-family:'Press Start 2P', monospace;}
+
+  /* ============ SCENE ============ */
+  #scene{
+    position:relative;
+    width:100%;
+    height:100vh;
+    overflow:hidden;
+    background:
+      repeating-linear-gradient(90deg, var(--wall-stripe) 0 24px, transparent 24px 48px),
+      var(--wall);
+  }
+  #floor{
+    position:absolute; left:0; right:0; bottom:0; height:32%;
+    background-image:
+      repeating-linear-gradient(90deg, var(--floor-a) 0 40px, var(--floor-b) 40px 80px);
+    border-top:4px solid #1c1310;
+  }
+
+  /* ============ HUD ============ */
+  #hud{
+    position:absolute; top:0; left:0; right:0; height:64px;
+    background:var(--hud);
+    border-bottom:4px solid var(--teal);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 18px;
+    z-index:50;
+  }
+  #hud .title{font-size:12px; color:var(--gold); letter-spacing:1px;}
+  #hud .title span{display:none;}
+  #progress{display:flex; gap:6px;}
+  .dot{width:14px; height:14px; border:2px solid #fff3; background:#0000; transition:background .3s, border-color .3s;}
+  .dot.done{background:var(--teal); border-color:var(--teal);}
+  @media(min-width:640px){ #hud .title{font-size:16px;} }
+
+  /* ============ CONTROLS (mobile) ============ */
+  #controls{
+    position:absolute; bottom:14px; left:14px; z-index:50;
+    display:flex; gap:10px;
+  }
+  #controls button{
+    width:52px; height:52px;
+    background:var(--hud); border:3px solid var(--teal); color:var(--teal);
+    font-size:20px; font-family:'Press Start 2P';
+    border-radius:6px; cursor:pointer;
+  }
+  #controls button:active{background:var(--teal); color:var(--hud);}
+  #hint{
+    position:absolute; bottom:80px; left:0; right:0; text-align:center;
+    font-size:12px; color:var(--gold); z-index:40; letter-spacing:1px;
+    text-shadow:2px 2px 0 #000;
+  }
+
+  /* ============ DOOR ROW ============ */
+  #door-row{
+    position:absolute; bottom:32%; left:0; right:0;
+    display:flex; justify-content:center; gap:28px;
+    padding:0 20px 20px;
+    overflow-x:auto;
+  }
+  .door-wrap{ display:flex; flex-direction:column; align-items:center; cursor:pointer; flex-shrink:0; width:110px; user-select:none;}
+  .badge{
+    width:42px; height:42px; border-radius:50%; border:3px solid var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Press Start 2P'; font-size:11px; color:var(--ink);
+    margin-bottom:6px;
+  }
+  .door{
+    width:100px; height:150px; background:#1c1310; border-radius:5px;
+    padding:6px; transition:transform .5s;
+    transform-origin:left center;
+  }
+  .door-inner{
+    width:100%; height:100%; background:#8B5A2B; border-radius:3px;
+    border:3px solid; display:flex; flex-direction:column; justify-content:space-around; padding:10px 6px;
+    position:relative;
+  }
+  .panel{background:#743e1f; height:38%; border-radius:2px;}
+  .knob{position:absolute; width:9px; height:9px; border-radius:50%; background:var(--gold); right:8px; top:50%;}
+  .door-wrap.open .door{transform:rotateY(-55deg);}
+  .label{
+    margin-top:8px; background:var(--hud); padding:4px 6px; border-radius:3px;
+    font-size:9px; text-align:center; letter-spacing:0.5px; white-space:nowrap;
+  }
+  .door-wrap.near .label{color:var(--gold);}
+  .door-wrap.visited .badge{opacity:0.55;}
+
+  /* ============ CHARACTER ============ */
+  #character{
+    position:absolute; bottom:32%; width:64px; height:96px;
+    transition:left 1s linear;
+  }
+  #character .part{position:absolute; background:#000;}
+  .c-head{width:32px; height:28px; background:#DBA77A; left:16px; top:0;}
+  .c-hair{width:36px; height:11px; background:#1E1815; left:14px; top:-4px;}
+  .c-eye{width:4px; height:4px; background:#14101F; top:12px;}
+  .c-eye.l{left:24px;} .c-eye.r{left:38px;}
+  .c-torso{width:40px; height:34px; background:var(--teal); left:12px; top:26px;}
+  .c-arm{width:9px; height:26px; background:#DBA77A; top:30px;}
+  .c-arm.l{left:2px;} .c-arm.r{left:53px;}
+  .c-leg{width:11px; height:20px; background:#293056; top:60px; transition:transform .18s;}
+  .c-leg.l{left:16px; transform-origin:top center;}
+  .c-leg.r{left:37px; transform-origin:top center;}
+  .c-shoe{width:15px; height:7px; background:#14101F; top:80px;}
+  .c-shoe.l{left:14px;} .c-shoe.r{left:35px;}
+  #character.walking .c-leg.l{animation:legL .36s infinite;}
+  #character.walking .c-leg.r{animation:legR .36s infinite;}
+  @keyframes legL{0%,100%{transform:rotate(22deg);} 50%{transform:rotate(-22deg);}}
+  @keyframes legR{0%,100%{transform:rotate(-22deg);} 50%{transform:rotate(22deg);}}
+  #character.facing-left{transform:scaleX(-1);}
+
+  /* ============ PANEL OVERLAY ============ */
+  #overlay{
+    position:fixed; inset:0; background:rgba(20,16,31,0.75); z-index:100;
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  #overlay.show{opacity:1; pointer-events:auto;}
+  #sheet{
+    background:var(--paper); color:var(--ink); width:100%; max-width:720px;
+    max-height:84vh; overflow-y:auto;
+    border-top:6px solid var(--teal);
+    border-radius:14px 14px 0 0;
+    transform:translateY(100%); transition:transform .35s cubic-bezier(.2,.9,.3,1.2);
+    padding:22px 22px 34px;
+  }
+  #overlay.show #sheet{transform:translateY(0);}
+  #sheet-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;}
+  #sheet-head h2{font-family:'Press Start 2P'; font-size:16px; line-height:1.5;}
+  #sheet-close{
+    background:var(--ink); color:#fff; border:none; width:34px; height:34px;
+    font-family:'Press Start 2P'; font-size:12px; border-radius:6px; cursor:pointer; flex-shrink:0; margin-left:12px;
+  }
+  #sheet-body{font-size:15px; line-height:1.7;}
+  #sheet-body p{margin-bottom:14px;}
+  .entry{padding:14px 0; border-top:2px dashed #d8cdb8;}
+  .entry:first-child{border-top:none;}
+  .entry .when{font-family:'Press Start 2P'; font-size:9px; color:#8a7a5c; margin-bottom:4px;}
+  .entry .role{font-weight:700; font-size:16px;}
+  .entry .org{color:#4a5578; margin-bottom:6px;}
+  .entry ul{padding-left:18px;}
+  .entry ul li{margin-bottom:4px;}
+  .chip-grid{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{background:#eee2c9; border:2px solid var(--ink); border-radius:5px; padding:8px 12px; font-size:13px; font-weight:700;}
+  .chip.next{opacity:0.5; border-style:dashed;}
+  .proj-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;}
+  .proj-card{border:2px solid var(--ink); border-radius:8px; padding:14px; background:#fff;}
+  .proj-card .status{font-family:'Press Start 2P'; font-size:8px; padding:3px 6px; border-radius:10px; display:inline-block; margin-bottom:8px;}
+  .status.built{background:#c9f2d8; color:#166534;}
+  .status.planned{background:#eee; color:#666;}
+  .proj-card h3{font-size:15px; margin-bottom:4px;}
+  .proj-card p{font-size:13px; color:#555; margin:0;}
+  .trophy-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px;}
+  .trophy{border:2px solid var(--ink); border-radius:8px; padding:12px; text-align:center; background:#fff;}
+  .trophy .icon{font-size:26px; margin-bottom:6px;}
+  .trophy .name{font-size:12px; font-weight:700;}
+  .contact-btn{
+    display:inline-block; background:var(--ink); color:#fff; padding:12px 18px; border-radius:8px;
+    text-decoration:none; font-weight:700; margin-right:10px; margin-top:8px; font-size:14px;
+  }
+  h3.sub{font-family:'Press Start 2P'; font-size:11px; margin:18px 0 10px; color:#4a5578;}
+  .lang-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .lang-pill{border:2px solid var(--ink); border-radius:20px; padding:5px 12px; font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="scene">
+  <div id="hud">
+    <div class="title">ATHARVA DHUMAL — HR QUEST</div>
+    <div id="progress"></div>
+  </div>
+
+  <div id="hint">USE ◄ ► OR TAP A DOOR</div>
+
+  <div id="floor"></div>
+  <div id="door-row"></div>
+
+  <div id="character">
+    <div class="part c-hair"></div>
+    <div class="part c-head"></div>
+    <div class="part c-eye l"></div>
+    <div class="part c-eye r"></div>
+    <div class="part c-arm l"></div>
+    <div class="part c-arm r"></div>
+    <div class="part c-torso"></div>
+    <div class="part c-leg l"></div>
+    <div class="part c-leg r"></div>
+    <div class="part c-shoe l"></div>
+    <div class="part c-shoe r"></div>
+  </div>
+
+  <div id="controls">
+    <button id="left">◄</button>
+    <button id="right">►</button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div id="sheet">
+    <div id="sheet-head">
+      <h2 id="sheet-title"></h2>
+      <button id="sheet-close">X</button>
+    </div>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   EDIT YOUR DATA HERE — this is the only section you need to
+   touch to add achievements, certificates, projects, etc.
+   ============================================================ */
+const DATA = {
+  objective: "Aspiring HR professional looking to begin my career with a forward-thinking organization where I can put my skills in people management, communication, and strategic HR planning to work — driving employee engagement and business outcomes.",
+
+  experience: [
+    {
+      when: "2 MONTHS",
+      role: "HR Intern",
+      org: "Virgam Delictus",
+      points: [
+        "Assisted with end-to-end recruitment, including sourcing candidates and scheduling interviews",
+        "Supported onboarding for new hires and maintained employee documentation",
+        "Helped update HR records and attendance data for accuracy and compliance"
+      ]
+    },
+    {
+      when: "6 MONTHS",
+      role: "Intern",
+      org: "CA Kunal M Gosavi & Associates",
+      points: [
+        "Handled day-to-day office administration tasks",
+        "Managed client documentation and maintained organized records for audit purposes"
+      ]
+    }
+  ],
+
+  skills: {
+    core: ["Advanced Excel", "PowerPoint", "Word", "Tally"],
+    next: ["Power BI", "SQL Basics"]
+  },
+
+  projects: [
+    { status: "built", title: "Recruitment Tracker", desc: "Excel-based system to log candidates, stages, and hiring timelines end to end." },
+    { status: "built", title: "Attendance Tracker", desc: "Automated sheet for daily attendance, leave balances, and monthly summaries." },
+    { status: "built", title: "Salary Calculator", desc: "Formula-driven calculator handling deductions, allowances, and net pay." },
+    { status: "planned", title: "HR Analytics Dashboard", desc: "Attrition rate, headcount, and diversity metrics visualized in Power BI." },
+    { status: "planned", title: "Exit Interview Analysis", desc: "Trend analysis on exit data to surface attrition drivers." },
+    { status: "planned", title: "Engagement Survey Analysis", desc: "Survey design and results breakdown to gauge employee sentiment." }
+  ],
+
+  education: [
+    { when: "PURSUING", degree: "MBA (HR)", school: "K.K. Wagh Institute of Engineering Education and Research, Nashik" },
+    { when: "2022–2025", degree: "B.Com", school: "B.Y.K College of Commerce" },
+    { when: "2021–2022", degree: "HSC", school: "B.Y.K College of Commerce" }
+  ],
+
+  // Add a new trophy any time by adding one more object to this list.
+  certificates: [
+    { icon: "🏅", name: "Workplace Emotional Intelligence" },
+    { icon: "📊", name: "Excel Essentials" },
+    { icon: "🤖", name: "AI Tools for Students" },
+    { icon: "🧠", name: "Neuro 6.0 Competition" },
+    { icon: "🏭", name: "NASH Automation & Robotics Visit" },
+    { icon: "🥛", name: "Anand Milk Union Visit" }
+  ],
+
+  languages: ["English", "Hindi", "Marathi"],
+
+  contact: {
+    phone: "7249051812",
+    email: "atharvadhumal02@gmail.com"
+  }
+};
+
+/* ============================================================
+   DOOR DEFINITIONS — order shown in the corridor
+   ============================================================ */
+const DOORS = [
+  { id: "objective",    num: "01", name: "Objective",    color: "#6BE8C9" },
+  { id: "experience",   num: "02", name: "Experience",   color: "#FF5C7A" },
+  { id: "skills",       num: "03", name: "Skills",       color: "#FFD54A" },
+  { id: "projects",     num: "04", name: "Projects",     color: "#8CA6FF" },
+  { id: "education",    num: "05", name: "Education",    color: "#C78CFF" },
+  { id: "certificates", num: "06", name: "Achievements", color: "#FF9933" },
+  { id: "contact",      num: "07", name: "Contact",      color: "#80FF99" }
+];
+
+/* ============================================================
+   RENDER DOORS
+   ============================================================ */
+const doorRow = document.getElementById('door-row');
+const progressEl = document.getElementById('progress');
+const visited = new Set();
+
+DOORS.forEach((d, i) => {
+  const wrap = document.createElement('div');
+  wrap.className = 'door-wrap';
+  wrap.dataset.id = d.id;
+  wrap.dataset.index = i;
+  wrap.innerHTML = `
+    <div class="badge pixel" style="background:${d.color}">${d.num}</div>
+    <div class="door"><div class="door-inner" style="border-color:${d.color}">
+      <div class="panel"></div><div class="panel"></div><div class="knob"></div>
+    </div></div>
+    <div class="label pixel">${d.name}</div>
+  `;
+  wrap.addEventListener('click', () => walkToDoor(i));
+  doorRow.appendChild(wrap);
+
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.dataset.id = d.id;
+  progressEl.appendChild(dot);
+});
+
+/* ============================================================
+   CHARACTER MOVEMENT
+   ============================================================ */
+const character = document.getElementById('character');
+const scene = document.getElementById('scene');
+let charX = 20;
+character.style.left = charX + 'px';
+
+function clampX(x){
+  const max = scene.clientWidth - 64 - 10;
+  return Math.max(10, Math.min(max, x));
+}
+
+function moveTo(x, cb){
+  charX = clampX(x);
+  const facing = x < parseFloat(character.style.left) ? 'facing-left' : '';
+  character.classList.toggle('facing-left', facing === 'facing-left');
+  character.classList.add('walking');
+  character.style.left = charX + 'px';
+  window.setTimeout(() => {
+    character.classList.remove('walking');
+    if (cb) cb();
+  }, 1000);
+}
+
+function walkToDoor(index){
+  const doorEls = document.querySelectorAll('.door-wrap');
+  const el = doorEls[index];
+  const rect = el.getBoundingClientRect();
+  const sceneRect = scene.getBoundingClientRect();
+  const targetX = (rect.left - sceneRect.left) + rect.width / 2 - 32;
+  moveTo(targetX, () => openDoor(index));
+}
+
+document.getElementById('left').addEventListener('click', () => moveTo(charX - 90));
+document.getElementById('right').addEventListener('click', () => moveTo(charX + 90));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') moveTo(charX - 90);
+  if (e.key === 'ArrowRight') moveTo(charX + 90);
+});
+
+/* ============================================================
+   DOOR OPEN + PANEL CONTENT
+   ============================================================ */
+const overlay = document.getElementById('overlay');
+const sheetTitle = document.getElementById('sheet-title');
+const sheetBody = document.getElementById('sheet-body');
+
+function openDoor(index){
+  const d = DOORS[index];
+  const wraps = document.querySelectorAll('.door-wrap');
+  wraps[index].classList.add('open');
+  visited.add(d.id);
+  document.querySelector(`.dot[data-id="${d.id}"]`).classList.add('done');
+  wraps[index].classList.add('visited');
+
+  window.setTimeout(() => {
+    sheetTitle.textContent = d.name.toUpperCase();
+    sheetBody.innerHTML = renderSection(d.id);
+    overlay.classList.add('show');
+  }, 350);
+}
+
+function closePanel(){
+  overlay.classList.remove('show');
+  document.querySelectorAll('.door-wrap.open').forEach(w => w.classList.remove('open'));
+}
+document.getElementById('sheet-close').addEventListener('click', closePanel);
+overlay.addEventListener('click', (e) => { if (e.target === overlay) closePanel(); });
+
+function renderSection(id){
+  switch(id){
+    case 'objective':
+      return `<p>${DATA.objective}</p>`;
+
+    case 'experience':
+      return DATA.experience.map(e => `
+        <div class="entry">
+          <div class="when">${e.when}</div>
+          <div class="role">${e.role}</div>
+          <div class="org">${e.org}</div>
+          <ul>${e.points.map(p => `<li>${p}</li>`).join('')}</ul>
+        </div>
+      `).join('');
+
+    case 'skills':
+      return `
+        <div class="chip-grid">
+          ${DATA.skills.core.map(s => `<div class="chip">${s}</div>`).join('')}
+          ${DATA.skills.next.map(s => `<div class="chip next">${s} (next)</div>`).join('')}
+        </div>
+      `;
+
+    case 'projects':
+      return `<div class="proj-grid">
+        ${DATA.projects.map(p => `
+          <div class="proj-card">
+            <span class="status ${p.status}">${p.status === 'built' ? 'BUILT' : 'PLANNED'}</span>
+            <h3>${p.title}</h3>
+            <p>${p.desc}</p>
+          </div>
+        `).join('')}
+      </div>`;
+
+    case 'education':
+      return DATA.education.map(e => `
+        <div class="entry">
+          <div class="when">${e.when}</div>
+          <div class="role">${e.degree}</div>
+          <div class="org">${e.school}</div>
+        </div>
+      `).join('');
+
+    case 'certificates':
+      return `
+        <div class="trophy-grid">
+          ${DATA.certificates.map(c => `
+            <div class="trophy"><div class="icon">${c.icon}</div><div class="name">${c.name}</div></div>
+          `).join('')}
+        </div>
+        <h3 class="sub">LANGUAGES</h3>
+        <div class="lang-row">${DATA.languages.map(l => `<span class="lang-pill">${l}</span>`).join('')}</div>
+      `;
+
+    case 'contact':
+      return `
+        <p>Open to HR internships, trainee, and people-consulting roles.</p>
+        <a class="contact-btn" href="tel:${DATA.contact.phone}">📞 ${DATA.contact.phone}</a>
+        <a class="contact-btn" href="mailto:${DATA.contact.email}">✉ ${DATA.contact.email}</a>
+      `;
+    default: return '';
+  }
+}
+
+/* ============================================================
+   PROXIMITY: highlight nearest door + Enter/Space to open
+   ============================================================ */
+function checkProximity(){
+  const wraps = document.querySelectorAll('.door-wrap');
+  let nearestIndex = -1, nearestDist = Infinity;
+  wraps.forEach((w, i) => {
+    const rect = w.getBoundingClientRect();
+    const sceneRect = scene.getBoundingClientRect();
+    const doorX = (rect.left - sceneRect.left) + rect.width / 2;
+    const dist = Math.abs(doorX - (charX + 32));
+    w.classList.remove('near');
+    if (dist < nearestDist) { nearestDist = dist; nearestIndex = i; }
+  });
+  if (nearestIndex >= 0 && nearestDist < 90) {
+    wraps[nearestIndex].classList.add('near');
+    return nearestIndex;
+  }
+  return -1;
+}
+let nearIndex = -1;
+setInterval(() => { nearIndex = checkProximity(); }, 200);
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && nearIndex >= 0 && !overlay.classList.contains('show')) {
+    e.preventDefault();
+    walkToDoor(nearIndex);
+  }
+});
+</script>
+</body>
+</html>
